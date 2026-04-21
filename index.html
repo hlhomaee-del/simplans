@@ -1,199 +1,834 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>CBCS Billing Simulation</title>
-<style>
-body {
-    font-family: Arial, sans-serif;
-    background: linear-gradient(135deg, #1e3c72, #2a5298);
-    color: white;
-    margin: 0;
-    padding: 20px;
-}
-
-.container {
-    max-width: 900px;
-    margin: auto;
-    background: rgba(0,0,0,0.6);
-    padding: 20px;
-    border-radius: 12px;
-}
-
-h1 {
-    text-align: center;
-}
-
-.card {
-    margin-top: 20px;
-    padding: 20px;
-    background: rgba(255,255,255,0.1);
-    border-radius: 10px;
-}
-
-button {
-    margin: 10px 5px;
-    padding: 10px 15px;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    font-weight: bold;
-}
-
-.correct {
-    background-color: #2ecc71;
-}
-
-.wrong {
-    background-color: #e74c3c;
-}
-
-.option {
-    background-color: #3498db;
-    color: white;
-}
-
-.feedback {
-    margin-top: 15px;
-    font-weight: bold;
-}
-
-.hidden {
-    display: none;
-}
-</style>
-</head>
-
-<body>
-
-<div class="container">
-<h1>📞 Billing Office Simulation</h1>
-<p>Listen to each case carefully. Identify the issue and choose the correct action.</p>
-
-<div id="case-container"></div>
-
-<p id="score">Score: 0</p>
-</div>
-
-<script>
-
-let score = 0;
-let currentCase = 0;
-
-const cases = [
-
-{
-title: "Call 1 – POS Plan",
-scenario: "Caller: 'Hi, my claim was denied. I saw a specialist but I have Select Health POS. My PCP is listed but I don’t think anything else was done.' \n\nClaim Code: CO-243",
-options: [
-"Bill patient immediately",
-"Obtain retro authorization from PCP",
-"Ignore, PPO does not require referral",
-"Resubmit claim without changes"
-],
-answer: 1,
-rationale: "POS plans require PCP coordination. CO-243 indicates authorization pathway failure. Attempt retro authorization first."
-},
-
-{
-title: "Call 2 – PPO Plan",
-scenario: "Caller: 'I have PPO, so I don’t need referrals. Why is my MRI claim denied?' \n\nClaim Code: CO-197",
-options: [
-"No issue, resubmit claim",
-"Authorization missing, request retro authorization",
-"Bill secondary insurance",
-"Check deductible only"
-],
-answer: 1,
-rationale: "PPO does not require referral, but certain procedures require authorization. CO-197 indicates missing pre-certification."
-},
-
-{
-title: "Call 3 – HMO Plan",
-scenario: "Caller: 'I went to a different doctor because it was closer. Why isn’t it covered?' \n\nClaim Code: CO-242",
-options: [
-"Out-of-network issue, inform patient",
-"Submit appeal immediately",
-"Check deductible",
-"Ignore, process as PPO"
-],
-answer: 0,
-rationale: "HMO requires strict network adherence. CO-242 indicates out-of-network services."
-},
-
-{
-title: "Call 4 – HDHP Plan",
-scenario: "Caller: 'Why do I owe so much? I have insurance.' \n\nCode: PR-1",
-options: [
-"Insurance denied claim",
-"Patient deductible applies",
-"Authorization missing",
-"Coverage inactive"
-],
-answer: 1,
-rationale: "PR-1 indicates deductible responsibility. This is not a denial, but patient financial responsibility."
-},
-
-{
-title: "Call 5 – Medicaid Managed Care",
-scenario: "Caller: 'My claim was rejected and I don’t understand why.' \n\nEligibility Response: Error 55",
-options: [
-"Authorization issue",
-"Out-of-network issue",
-"Member not active or not found",
-"Deductible not met"
-],
-answer: 2,
-rationale: "Error 55 indicates subscriber not found or inactive coverage on date of service."
-}
-
-];
-
-function loadCase() {
-    if (currentCase >= cases.length) {
-        document.getElementById("case-container").innerHTML = "<h2>Simulation Complete!</h2>";
-        return;
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CBCS Claim Investigation Lab</title>
+  <style>
+    :root{
+      --bg1:#0f172a;
+      --bg2:#1e293b;
+      --glass:rgba(255,255,255,0.08);
+      --glass-2:rgba(255,255,255,0.12);
+      --text:#f8fafc;
+      --muted:#cbd5e1;
+      --accent:#7c3aed;
+      --accent2:#06b6d4;
+      --ok:#22c55e;
+      --bad:#ef4444;
+      --warn:#f59e0b;
+      --card-shadow:0 18px 40px rgba(0,0,0,0.35);
+      --radius:22px;
     }
 
-    const c = cases[currentCase];
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: Inter, Arial, Helvetica, sans-serif;
+      color:var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(124,58,237,0.25), transparent 28%),
+        radial-gradient(circle at top right, rgba(6,182,212,0.22), transparent 30%),
+        linear-gradient(135deg, var(--bg1), var(--bg2));
+      min-height:100vh;
+    }
 
-    let html = `<div class="card">
-        <h2>${c.title}</h2>
-        <p>${c.scenario}</p>`;
+    .wrap{
+      max-width:1100px;
+      margin:0 auto;
+      padding:28px 18px 60px;
+    }
 
-    c.options.forEach((opt, index) => {
-        html += `<button class="option" onclick="checkAnswer(${index})">${opt}</button>`;
+    .hero{
+      background:linear-gradient(135deg, rgba(255,255,255,0.09), rgba(255,255,255,0.04));
+      border:1px solid rgba(255,255,255,0.12);
+      box-shadow:var(--card-shadow);
+      border-radius:30px;
+      padding:26px;
+      backdrop-filter: blur(10px);
+      margin-bottom:22px;
+    }
+
+    h1{
+      margin:0 0 10px;
+      font-size:clamp(1.9rem, 4vw, 3rem);
+      letter-spacing:-0.03em;
+    }
+
+    .sub{
+      color:var(--muted);
+      font-size:1rem;
+      line-height:1.6;
+      margin:0;
+    }
+
+    .topbar{
+      display:grid;
+      grid-template-columns: 1fr auto auto;
+      gap:14px;
+      margin:18px 0 22px;
+      align-items:stretch;
+    }
+
+    .pill, .scorebox, .progressbox{
+      background:var(--glass);
+      border:1px solid rgba(255,255,255,0.12);
+      backdrop-filter: blur(10px);
+      border-radius:18px;
+      padding:14px 16px;
+      box-shadow:var(--card-shadow);
+    }
+
+    .pill strong, .scorebox strong, .progressbox strong{
+      display:block;
+      font-size:.85rem;
+      color:#dbeafe;
+      margin-bottom:4px;
+      letter-spacing:.02em;
+      text-transform:uppercase;
+    }
+
+    .pill span, .scorebox span, .progressbox span{
+      font-size:1rem;
+      color:var(--text);
+    }
+
+    .layout{
+      display:grid;
+      grid-template-columns: 1.12fr 0.88fr;
+      gap:20px;
+    }
+
+    .panel{
+      background:var(--glass);
+      border:1px solid rgba(255,255,255,0.12);
+      backdrop-filter: blur(12px);
+      border-radius:var(--radius);
+      padding:22px;
+      box-shadow:var(--card-shadow);
+    }
+
+    .case-tag{
+      display:inline-block;
+      padding:8px 12px;
+      border-radius:999px;
+      background:linear-gradient(90deg, rgba(124,58,237,0.28), rgba(6,182,212,0.24));
+      border:1px solid rgba(255,255,255,0.16);
+      font-size:.84rem;
+      margin-bottom:14px;
+    }
+
+    .case-title{
+      margin:0 0 12px;
+      font-size:1.6rem;
+      letter-spacing:-0.02em;
+    }
+
+    .meta{
+      display:grid;
+      grid-template-columns:repeat(2, minmax(0,1fr));
+      gap:10px;
+      margin:14px 0 18px;
+    }
+
+    .mini{
+      background:rgba(255,255,255,0.05);
+      border:1px solid rgba(255,255,255,0.08);
+      padding:12px 13px;
+      border-radius:15px;
+      line-height:1.45;
+    }
+
+    .mini b{
+      color:#dbeafe;
+      font-weight:700;
+    }
+
+    .scenario{
+      white-space:pre-line;
+      line-height:1.75;
+      color:#eef2ff;
+      background:rgba(255,255,255,0.04);
+      border:1px solid rgba(255,255,255,0.08);
+      border-radius:18px;
+      padding:16px;
+      margin-top:12px;
+    }
+
+    .prompt{
+      margin:16px 0 12px;
+      color:#fde68a;
+      font-weight:700;
+    }
+
+    .options{
+      display:grid;
+      gap:12px;
+      margin-top:10px;
+    }
+
+    .option{
+      width:100%;
+      border:none;
+      cursor:pointer;
+      text-align:left;
+      color:var(--text);
+      padding:15px 16px;
+      border-radius:16px;
+      background:linear-gradient(135deg, rgba(124,58,237,0.22), rgba(6,182,212,0.18));
+      border:1px solid rgba(255,255,255,0.12);
+      transition:transform .18s ease, box-shadow .18s ease, background .18s ease;
+      font-size:1rem;
+      line-height:1.45;
+    }
+
+    .option:hover{
+      transform:translateY(-2px);
+      box-shadow:0 12px 28px rgba(0,0,0,0.25);
+      background:linear-gradient(135deg, rgba(124,58,237,0.33), rgba(6,182,212,0.28));
+    }
+
+    .option:disabled{
+      cursor:not-allowed;
+      opacity:0.95;
+    }
+
+    .correct{
+      background:linear-gradient(135deg, rgba(34,197,94,0.34), rgba(34,197,94,0.2)) !important;
+      border-color:rgba(34,197,94,0.8) !important;
+    }
+
+    .incorrect{
+      background:linear-gradient(135deg, rgba(239,68,68,0.34), rgba(239,68,68,0.2)) !important;
+      border-color:rgba(239,68,68,0.8) !important;
+    }
+
+    .sidebar-title{
+      margin:0 0 12px;
+      font-size:1.15rem;
+    }
+
+    .thinking-list{
+      margin:0;
+      padding-left:18px;
+      line-height:1.7;
+      color:var(--muted);
+    }
+
+    .code-bank{
+      display:grid;
+      gap:10px;
+      margin-top:16px;
+    }
+
+    .code{
+      background:rgba(255,255,255,0.05);
+      border:1px solid rgba(255,255,255,0.08);
+      border-radius:14px;
+      padding:12px;
+      line-height:1.5;
+      color:#e2e8f0;
+    }
+
+    .code b{
+      color:#f0f9ff;
+    }
+
+    .feedback{
+      margin-top:16px;
+      padding:16px;
+      border-radius:18px;
+      line-height:1.7;
+      display:none;
+      border:1px solid rgba(255,255,255,0.12);
+      background:rgba(255,255,255,0.06);
+    }
+
+    .feedback.show{display:block}
+
+    .feedback.ok{
+      background:rgba(34,197,94,0.12);
+      border-color:rgba(34,197,94,0.45);
+    }
+
+    .feedback.bad{
+      background:rgba(239,68,68,0.12);
+      border-color:rgba(239,68,68,0.45);
+    }
+
+    .actions{
+      display:flex;
+      gap:12px;
+      margin-top:18px;
+      flex-wrap:wrap;
+    }
+
+    .btn{
+      border:none;
+      cursor:pointer;
+      padding:12px 16px;
+      border-radius:14px;
+      font-weight:700;
+      color:var(--text);
+      background:linear-gradient(135deg, var(--accent), var(--accent2));
+      box-shadow:var(--card-shadow);
+    }
+
+    .btn.secondary{
+      background:rgba(255,255,255,0.08);
+      border:1px solid rgba(255,255,255,0.14);
+      box-shadow:none;
+    }
+
+    .result{
+      display:none;
+      margin-top:20px;
+      padding:22px;
+      border-radius:22px;
+      background:rgba(255,255,255,0.07);
+      border:1px solid rgba(255,255,255,0.14);
+      line-height:1.8;
+    }
+
+    .result.show{display:block}
+
+    .summary-list{
+      margin-top:12px;
+      display:grid;
+      gap:10px;
+    }
+
+    .summary-item{
+      background:rgba(255,255,255,0.05);
+      border:1px solid rgba(255,255,255,0.08);
+      border-radius:16px;
+      padding:12px 14px;
+    }
+
+    .footer-note{
+      margin-top:22px;
+      color:var(--muted);
+      line-height:1.7;
+    }
+
+    @media (max-width: 920px){
+      .layout{
+        grid-template-columns:1fr;
+      }
+      .topbar{
+        grid-template-columns:1fr;
+      }
+      .meta{
+        grid-template-columns:1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="hero">
+      <h1>CBCS Claim Investigation Lab</h1>
+      <p class="sub">
+        Read like a biller. Think like a problem-solver. Every case contains clues about plan type, network rules,
+        timing, documentation, eligibility, or patient financial responsibility. Do not jump at the first obvious detail.
+      </p>
+    </section>
+
+    <section class="topbar">
+      <div class="pill">
+        <strong>Investigation order</strong>
+        <span>Plan → network → referral/auth → eligibility → timing → financial responsibility → code meaning</span>
+      </div>
+      <div class="progressbox">
+        <strong>Case</strong>
+        <span id="progressText">1 / 10</span>
+      </div>
+      <div class="scorebox">
+        <strong>Score</strong>
+        <span id="scoreText">0 / 10</span>
+      </div>
+    </section>
+
+    <section class="layout">
+      <div class="panel">
+        <div class="case-tag" id="caseTag">Claim investigation</div>
+        <h2 class="case-title" id="caseTitle">Loading case...</h2>
+
+        <div class="meta" id="metaGrid"></div>
+
+        <div class="scenario" id="scenarioBox"></div>
+
+        <div class="prompt">What is the best next billing interpretation or action?</div>
+
+        <div class="options" id="optionsBox"></div>
+
+        <div class="feedback" id="feedbackBox"></div>
+
+        <div class="actions">
+          <button class="btn secondary" id="restartBtn">Restart</button>
+          <button class="btn" id="nextBtn" style="display:none;">Next case</button>
+        </div>
+
+        <div class="result" id="resultBox"></div>
+      </div>
+
+      <div class="panel">
+        <h3 class="sidebar-title">What to look for first</h3>
+        <ol class="thinking-list">
+          <li>What type of plan is this?</li>
+          <li>Is the provider in-network or out-of-network?</li>
+          <li>Is the issue a referral problem or an authorization problem?</li>
+          <li>Was coverage active on the date of service?</li>
+          <li>Is the denial really a denial, or is it patient responsibility?</li>
+          <li>Does the code point to invalid information, missing information, network rules, timing, or benefits?</li>
+        </ol>
+
+        <h3 class="sidebar-title" style="margin-top:22px;">Code bank reminders</h3>
+        <div class="code-bank">
+          <div class="code"><b>CO-197</b> = precertification / authorization / notification absent</div>
+          <div class="code"><b>CO-242</b> = services not provided by network / primary care providers</div>
+          <div class="code"><b>CO-243</b> = services not authorized by network / PCP</div>
+          <div class="code"><b>PR-1</b> = deductible amount</div>
+          <div class="code"><b>CO-29</b> = timely filing limit expired</div>
+          <div class="code"><b>CO-16</b> = claim lacks information needed for adjudication</div>
+          <div class="code"><b>Error 55</b> = subscriber / insured not found</div>
+          <div class="code"><b>Error 74</b> = member ID does not match payer records</div>
+          <div class="code"><b>Error 45</b> = provider is out of network for member</div>
+          <div class="code"><b>A7</b> = rejected for invalid information</div>
+          <div class="code"><b>A6</b> = rejected for missing information</div>
+        </div>
+
+        <p class="footer-note">
+          A realistic claim is messy. The first thing students notice is not always the real issue.
+          Slow down and separate the clue from the answer.
+        </p>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const cases = [
+      {
+        tag: "Case 1 • POS • specialist office visit",
+        title: "The referral trap that is hiding behind a clean registration",
+        meta: [
+          "Carrier: HarborPoint Select POS",
+          "DOS: 04/30/2026",
+          "PCP on file: Yes",
+          "Specialist: In-network cardiology",
+          "Claim status: Denied – CO-243",
+          "Referral number: blank"
+        ],
+        scenario:
+`The patient completed registration correctly, the member ID is valid, and the specialist is in-network.
+The front desk documented the PCP name but the referral field in the practice system is empty.
+The patient says, “But I stayed in network, so why is this denied?”`,
+        options: [
+          "This is mainly a network denial because the specialist is out-of-network.",
+          "This is a PCP/referral pathway issue; the next step is to verify whether a referral can be obtained or documented.",
+          "This is a deductible issue; bill the patient the entire balance immediately.",
+          "This is a COB issue; collect the spouse’s insurance information first."
+        ],
+        answer: 1,
+        rationale:
+`Correct. CO-243 points to services not authorized through the required network or PCP pathway.
+The specialist is in-network, so network is not the main problem. The stronger clue is POS + specialist + PCP required + referral field blank.
+Other related codes students should know: CO-197 can signal missing authorization; Error 43 can reflect a missing referral number; CO-16 may appear if the claim lacks necessary adjudication information.`
+      },
+      {
+        tag: "Case 2 • PPO • imaging service",
+        title: "No referral needed does not mean no authorization needed",
+        meta: [
+          "Carrier: Apex Elite PPO",
+          "DOS: 04/29/2026",
+          "Ordering provider: In-network orthopedics",
+          "Service: MRI knee without contrast",
+          "Claim status: Denied – CO-197",
+          "Referral on file: not required"
+        ],
+        scenario:
+`The patient says, “I have PPO, so I do not need permission.”
+The orthopedic office sent an imaging order, but the prior authorization field is blank.
+The MRI was completed two days after the order was written.`,
+        options: [
+          "This is best interpreted as a missing authorization issue for a service that required precertification.",
+          "This is a referral denial because PPO plans require PCP routing for MRI.",
+          "This is an eligibility issue because the DOS is too recent.",
+          "This is a coinsurance issue, so no denial actually occurred."
+        ],
+        answer: 0,
+        rationale:
+`Correct. PPO usually does not require referrals, but certain procedures still require prior authorization.
+CO-197 fits missing precertification or authorization.
+Other codes students may see around similar situations: CO-198 for authorization not obtained or exceeded; CO-16 for missing information; CO-50 when medical necessity is challenged.`
+      },
+      {
+        tag: "Case 3 • HMO • routine specialty visit",
+        title: "The patient followed the PCP, but the rendering provider changed",
+        meta: [
+          "Carrier: MetroCare HMO",
+          "DOS: 04/27/2026",
+          "Referral on file: Yes",
+          "Authorized provider: Dr. Brenda Evans",
+          "Rendering provider on claim: Dr. L. Novak",
+          "Claim status: Denied – CO-242"
+        ],
+        scenario:
+`The patient had a valid referral to a dermatologist in the HMO network.
+However, on the date of service the original physician was unavailable and another dermatologist in the same office saw the patient.
+The submitted claim lists the substitute rendering provider.`,
+        options: [
+          "This is automatically payable because the office location stayed the same.",
+          "This is a likely network or provider mismatch problem because the referral may have been tied to a specific authorized provider.",
+          "This is timely filing because the rendering provider changed.",
+          "This is strictly patient deductible responsibility."
+        ],
+        answer: 1,
+        rationale:
+`Correct. HMO referrals and authorizations can be tied to a specific network provider.
+Even when the office seems the same, the rendering provider on the claim matters.
+CO-242 often points to services not provided by required network or PCP providers.
+Related codes students should know: Error 45 for out-of-network provider; CO-243 for not authorized by PCP/network; CO-96 for non-covered service in some payer situations.`
+      },
+      {
+        tag: "Case 4 • HDHP • office procedure",
+        title: "The claim is not denied, but the patient thinks it is",
+        meta: [
+          "Carrier: Peak Value HDHP",
+          "DOS: 04/30/2026",
+          "Allowed amount: $420",
+          "Deductible met before DOS: $0",
+          "ERA adjustment: PR-1",
+          "Patient called billing same day"
+        ],
+        scenario:
+`The patient says, “My insurance paid nothing, so this was denied.”
+The ERA shows the claim processed and applied to deductible.
+The office notes show no authorization issue and the eligibility response was valid.`,
+        options: [
+          "This is an authorization denial; appeal immediately.",
+          "This is a processed claim with patient deductible responsibility, not a true denial.",
+          "This is out-of-network because the plan paid zero dollars.",
+          "This is a subscriber ID mismatch because the claim did not pay."
+        ],
+        answer: 1,
+        rationale:
+`Correct. PR-1 means deductible amount.
+The claim can process correctly and still result in zero payer payment if the deductible has not been met.
+Related financial codes students should know: PR-2 for coinsurance, PR-3 for copay, CO-45 for contractual adjustment, PR-204 when a service is not covered by the plan.`
+      },
+      {
+        tag: "Case 5 • Medicaid managed care • eligibility",
+        title: "The member ID looks complete, but the date of service is the problem",
+        meta: [
+          "Carrier: State Community Care MMC",
+          "DOS: 04/21/2026",
+          "Eligibility run date: 04/30/2026",
+          "Eligibility response: Error 55",
+          "Member reported recent county transfer",
+          "Plan listed on card: MMC-GOLD County 042"
+        ],
+        scenario:
+`The card was scanned correctly and the member number appears readable.
+The patient insists the plan is active now.
+The billing team is trying to understand whether the service date should be billed to this plan, another county plan, or a fee-for-service arrangement.`,
+        options: [
+          "This is mainly a deductible issue because Medicaid works like HDHP in early benefit periods.",
+          "This is an eligibility/subscriber problem tied to date of service and plan records, so coverage must be verified for the actual DOS before rebilling.",
+          "This is a missing referral issue because MMC always requires PCP authorization first.",
+          "This is timely filing because the eligibility was run after the service date."
+        ],
+        answer: 1,
+        rationale:
+`Correct. Error 55 signals subscriber or insured not found.
+In Medicaid managed care, county transfers, plan changes, or eligibility shifts can make a member appear active now but not under the same records on the original DOS.
+Related codes students should know: Error 74 for member ID mismatch, Error 58 for plan mismatch, A7 for invalid information rejection, CO-109 for coverage terminated.`
+      },
+      {
+        tag: "Case 6 • Commercial plan • COB confusion",
+        title: "The primary payer denied because another plan should have been billed first",
+        meta: [
+          "Carrier billed first: NorthBridge Commercial",
+          "DOS: 04/24/2026",
+          "Claim status: Denied – CO-22",
+          "Registration notes: spouse coverage mentioned last year",
+          "Subscriber relationship on file: self",
+          "Secondary plan fields: blank"
+        ],
+        scenario:
+`The patient says, “I only use this card.”
+The payer returns the claim with a COB-related denial, and the practice management system still shows a note from a prior visit that the patient may also be covered under a spouse’s employer plan.
+Nothing else on the claim appears missing.`,
+        options: [
+          "This is best handled as a coordination of benefits issue; verify whether another payer is primary before resubmission.",
+          "This is a missing authorization problem because spouse coverage triggers precertification rules.",
+          "This is out-of-network because employer plans have narrow networks.",
+          "This is deductible responsibility because the payer paid zero."
+        ],
+        answer: 0,
+        rationale:
+`Correct. CO-22 is commonly used when this care may be covered by another payer per coordination of benefits.
+Students need to separate eligibility from COB. The issue is not just whether the patient has active coverage, but which payer is primary.
+Related codes or messages students may encounter: CO-23 when impact of prior payer adjudication is involved; CO-16 when additional claim information is needed; eligibility or registration notes that hint another policy exists.`
+      },
+      {
+        tag: "Case 7 • Marketplace plan • subscriber mismatch",
+        title: "The card was copied correctly, but the patient was registered under the wrong person",
+        meta: [
+          "Carrier: Silver Horizon Exchange Plan",
+          "DOS: 04/28/2026",
+          "Claim status: Rejected – Error 74",
+          "Patient on claim: Nina Patel",
+          "Subscriber on card: Arjun Patel",
+          "Relationship field submitted: self"
+        ],
+        scenario:
+`The patient is the dependent daughter, but the claim was built as though she were the subscriber.
+The member ID exists, the plan is active, and the provider is in-network.
+The rejection came back before full adjudication.`,
+        options: [
+          "This is best interpreted as invalid subscriber/member information, especially because the relationship field and subscriber identity do not match payer records.",
+          "This is a referral issue because exchange plans require PCP assignment.",
+          "This is a coinsurance issue because the patient is a dependent.",
+          "This is a late filing issue because dependents use a different deadline."
+        ],
+        answer: 0,
+        rationale:
+`Correct. Error 74 often points to member ID or submitted data not matching payer records.
+Here the stronger clue is the subscriber-dependent mismatch and the relationship field submitted as self.
+Related codes students should know: Error 55 for subscriber not found; A7 for invalid information; A6 for missing information; CO-16 when the payer needs corrected information for adjudication.`
+      },
+      {
+        tag: "Case 8 • Employer plan • timely filing",
+        title: "The denial is not about coverage at all",
+        meta: [
+          "Carrier: Pioneer Employer Health",
+          "DOS: 11/12/2025",
+          "Initial claim submission: 04/25/2026",
+          "Claim status: Denied – CO-29",
+          "Provider notes: service covered; authorization on file",
+          "Reason from staff: claim held in work queue"
+        ],
+        scenario:
+`Everything about the claim itself looks clean.
+The patient was active, the provider was participating, and any required authorization was already obtained.
+The denial appears months later after internal staff discovered the claim was never released from the billing queue.`,
+        options: [
+          "This is mainly a referral issue because old claims require new referrals.",
+          "This is timely filing; the payer is denying because the filing limit expired.",
+          "This is a deductible issue since the DOS is old.",
+          "This is a COB issue because another payer may have existed in November."
+        ],
+        answer: 1,
+        rationale:
+`Correct. CO-29 points to the timely filing limit having expired.
+This is an operational revenue cycle failure, not a benefits problem.
+Students need to learn that some denials are caused by office workflow breakdown, not patient coverage or plan rules.
+Related issues students may also see: CO-16 when proof of timely filing is needed; internal work queue delays; resubmission deadlines versus appeals deadlines.`
+      },
+      {
+        tag: "Case 9 • POS • emergency exception",
+        title: "Out-of-network does not always mean non-covered",
+        meta: [
+          "Carrier: Select Health POS",
+          "DOS: 04/26/2026",
+          "Setting: emergency room",
+          "Rendering hospital: out-of-network",
+          "Triage note: acute chest pain and shortness of breath",
+          "Front desk assumed patient liability"
+        ],
+        scenario:
+`The patient went to the nearest emergency room rather than a network facility.
+Registration noticed the hospital was out-of-network and told the patient coverage might be denied.
+The billing team now has to decide whether this should be handled as a routine OON denial or whether emergency rules apply.`,
+        options: [
+          "This should be treated as an emergency exception review first, because out-of-network emergency care is not handled the same way as routine elective OON care.",
+          "This is automatically denied because POS requires PCP referral first.",
+          "This is purely a deductible issue because emergency rooms never need authorization.",
+          "This is subscriber mismatch because emergency claims often use temporary IDs."
+        ],
+        answer: 0,
+        rationale:
+`Correct. This case is designed to break the student habit of equating all out-of-network use with simple denial.
+Emergency services often follow different benefit rules.
+The smart next step is not to assume routine patient liability but to verify emergency benefit processing.
+Related codes and concepts students should discuss: CO-242 for network/provider issues in ordinary situations, but emergency exceptions can override ordinary network assumptions; medical necessity and place-of-service details also matter.`
+      },
+      {
+        tag: "Case 10 • Commercial plan • invalid versus missing information",
+        title: "One digit changed the whole claim outcome",
+        meta: [
+          "Carrier: Evergreen Choice",
+          "DOS: 04/30/2026",
+          "Claim status: Rejected – A7",
+          "Member ID entered: EC4419082",
+          "Scanned card shows: EC4419802",
+          "Eligibility response from payer portal: no exact match"
+        ],
+        scenario:
+`The payer did not fully adjudicate the claim.
+Registration entered the insurance card manually because the scanner was down.
+The plan type, provider network, and service all appear appropriate, but the payer rejected the submission before processing.`,
+        options: [
+          "This is a true medical necessity denial and should be appealed with records.",
+          "This is likely invalid information, probably a data entry error in identifying information, so the claim should be corrected and resubmitted.",
+          "This is a deductible issue because the payer portal did not display benefits.",
+          "This is a network denial because the exact match was not found."
+        ],
+        answer: 1,
+        rationale:
+`Correct. A7 indicates a rejection for invalid information.
+This case trains students to distinguish invalid information from missing information. A wrong digit can cause a rejection even when everything else is correct.
+Related codes students should know: A6 for missing required information, Error 74 for ID mismatch, Error 55 for subscriber not found, CO-16 when additional correct information is needed to adjudicate the claim.`
+      }
+    ];
+
+    let currentCase = 0;
+    let score = 0;
+    let answered = false;
+    const results = [];
+
+    const caseTag = document.getElementById("caseTag");
+    const caseTitle = document.getElementById("caseTitle");
+    const metaGrid = document.getElementById("metaGrid");
+    const scenarioBox = document.getElementById("scenarioBox");
+    const optionsBox = document.getElementById("optionsBox");
+    const feedbackBox = document.getElementById("feedbackBox");
+    const scoreText = document.getElementById("scoreText");
+    const progressText = document.getElementById("progressText");
+    const nextBtn = document.getElementById("nextBtn");
+    const restartBtn = document.getElementById("restartBtn");
+    const resultBox = document.getElementById("resultBox");
+
+    function renderCase() {
+      answered = false;
+      feedbackBox.className = "feedback";
+      feedbackBox.innerHTML = "";
+      feedbackBox.style.display = "none";
+      nextBtn.style.display = "none";
+      resultBox.classList.remove("show");
+      resultBox.innerHTML = "";
+
+      const c = cases[currentCase];
+      caseTag.textContent = c.tag;
+      caseTitle.textContent = c.title;
+      scenarioBox.textContent = c.scenario;
+      progressText.textContent = `${currentCase + 1} / ${cases.length}`;
+      scoreText.textContent = `${score} / ${cases.length}`;
+
+      metaGrid.innerHTML = "";
+      c.meta.forEach(item => {
+        const div = document.createElement("div");
+        div.className = "mini";
+        div.innerHTML = item.includes(":")
+          ? `<b>${item.split(":")[0]}:</b> ${item.substring(item.indexOf(":") + 1).trim()}`
+          : item;
+        metaGrid.appendChild(div);
+      });
+
+      optionsBox.innerHTML = "";
+      c.options.forEach((opt, idx) => {
+        const btn = document.createElement("button");
+        btn.className = "option";
+        btn.innerHTML = `<b>${String.fromCharCode(65 + idx)}.</b> ${opt}`;
+        btn.onclick = () => handleAnswer(idx, btn);
+        optionsBox.appendChild(btn);
+      });
+    }
+
+    function handleAnswer(selectedIndex, selectedButton) {
+      if (answered) return;
+      answered = true;
+
+      const c = cases[currentCase];
+      const buttons = [...document.querySelectorAll(".option")];
+      buttons.forEach((btn, idx) => {
+        btn.disabled = true;
+        if (idx === c.answer) btn.classList.add("correct");
+      });
+
+      let correct = selectedIndex === c.answer;
+      if (!correct) selectedButton.classList.add("incorrect");
+      if (correct) score++;
+
+      results.push({
+        title: c.title,
+        correct,
+        rationale: c.rationale
+      });
+
+      feedbackBox.style.display = "block";
+      feedbackBox.classList.add("show", correct ? "ok" : "bad");
+      feedbackBox.innerHTML = `
+        <div style="font-weight:800; margin-bottom:8px;">
+          ${correct ? "Correct." : "Not quite."}
+        </div>
+        <div>${c.rationale}</div>
+      `;
+
+      scoreText.textContent = `${score} / ${cases.length}`;
+
+      if (currentCase < cases.length - 1) {
+        nextBtn.style.display = "inline-block";
+      } else {
+        setTimeout(showResults, 500);
+      }
+    }
+
+    function showResults() {
+      caseTag.textContent = "Completed";
+      caseTitle.textContent = "Investigation summary";
+      metaGrid.innerHTML = "";
+      scenarioBox.textContent = "Review the patterns. Which category tripped you up most: network, authorization, eligibility, invalid information, timely filing, or patient responsibility?";
+      optionsBox.innerHTML = "";
+      feedbackBox.style.display = "none";
+      nextBtn.style.display = "none";
+
+      let performanceMessage = "";
+      if (score === 10) {
+        performanceMessage = "Excellent. You are reading claims like a real biller and not falling for surface-level clues.";
+      } else if (score >= 8) {
+        performanceMessage = "Strong work. Your reasoning is solid, but review the few places where similar denial themes can hide different root causes.";
+      } else if (score >= 6) {
+        performanceMessage = "Good base. You understand many concepts, but you need sharper discrimination between referral, authorization, eligibility, and invalid information.";
+      } else {
+        performanceMessage = "You need more repetition with claim logic. Slow down and investigate plan type, DOS, network, and code meaning before deciding.";
+      }
+
+      resultBox.classList.add("show");
+      resultBox.innerHTML = `
+        <h3 style="margin-top:0;">Final score: ${score} / ${cases.length}</h3>
+        <div>${performanceMessage}</div>
+        <div class="summary-list">
+          ${results.map((r, i) => `
+            <div class="summary-item">
+              <b>Case ${i + 1}:</b> ${r.title}<br>
+              <b>Result:</b> ${r.correct ? "Correct" : "Needs review"}
+            </div>
+          `).join("")}
+        </div>
+        <div style="margin-top:14px;">
+          <b>Review focus:</b> invalid information vs missing information, routine out-of-network vs emergency exception, referral vs authorization, and true denial vs patient responsibility.
+        </div>
+      `;
+    }
+
+    nextBtn.addEventListener("click", () => {
+      currentCase++;
+      renderCase();
+      window.scrollTo({ top: 0, behavior: "smooth" });
     });
 
-    html += `<div id="feedback" class="feedback hidden"></div></div>`;
+    restartBtn.addEventListener("click", () => {
+      currentCase = 0;
+      score = 0;
+      answered = false;
+      results.length = 0;
+      renderCase();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
 
-    document.getElementById("case-container").innerHTML = html;
-}
-
-function checkAnswer(selected) {
-    const c = cases[currentCase];
-    const feedback = document.getElementById("feedback");
-
-    feedback.classList.remove("hidden");
-
-    if (selected === c.answer) {
-        score++;
-        feedback.innerHTML = "✅ Correct! " + c.rationale;
-    } else {
-        feedback.innerHTML = "❌ Incorrect. " + c.rationale;
-    }
-
-    document.getElementById("score").innerText = "Score: " + score;
-
-    setTimeout(() => {
-        currentCase++;
-        loadCase();
-    }, 3000);
-}
-
-loadCase();
-
-</script>
-
+    renderCase();
+  </script>
 </body>
 </html>
