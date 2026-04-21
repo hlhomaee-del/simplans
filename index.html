@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>CBCS Billing Simulation</title>
+<style>
+body {
+    font-family: Arial, sans-serif;
+    background: linear-gradient(135deg, #1e3c72, #2a5298);
+    color: white;
+    margin: 0;
+    padding: 20px;
+}
+
+.container {
+    max-width: 900px;
+    margin: auto;
+    background: rgba(0,0,0,0.6);
+    padding: 20px;
+    border-radius: 12px;
+}
+
+h1 {
+    text-align: center;
+}
+
+.card {
+    margin-top: 20px;
+    padding: 20px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 10px;
+}
+
+button {
+    margin: 10px 5px;
+    padding: 10px 15px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.correct {
+    background-color: #2ecc71;
+}
+
+.wrong {
+    background-color: #e74c3c;
+}
+
+.option {
+    background-color: #3498db;
+    color: white;
+}
+
+.feedback {
+    margin-top: 15px;
+    font-weight: bold;
+}
+
+.hidden {
+    display: none;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+<h1>📞 Billing Office Simulation</h1>
+<p>Listen to each case carefully. Identify the issue and choose the correct action.</p>
+
+<div id="case-container"></div>
+
+<p id="score">Score: 0</p>
+</div>
+
+<script>
+
+let score = 0;
+let currentCase = 0;
+
+const cases = [
+
+{
+title: "Call 1 – POS Plan",
+scenario: "Caller: 'Hi, my claim was denied. I saw a specialist but I have Select Health POS. My PCP is listed but I don’t think anything else was done.' \n\nClaim Code: CO-243",
+options: [
+"Bill patient immediately",
+"Obtain retro authorization from PCP",
+"Ignore, PPO does not require referral",
+"Resubmit claim without changes"
+],
+answer: 1,
+rationale: "POS plans require PCP coordination. CO-243 indicates authorization pathway failure. Attempt retro authorization first."
+},
+
+{
+title: "Call 2 – PPO Plan",
+scenario: "Caller: 'I have PPO, so I don’t need referrals. Why is my MRI claim denied?' \n\nClaim Code: CO-197",
+options: [
+"No issue, resubmit claim",
+"Authorization missing, request retro authorization",
+"Bill secondary insurance",
+"Check deductible only"
+],
+answer: 1,
+rationale: "PPO does not require referral, but certain procedures require authorization. CO-197 indicates missing pre-certification."
+},
+
+{
+title: "Call 3 – HMO Plan",
+scenario: "Caller: 'I went to a different doctor because it was closer. Why isn’t it covered?' \n\nClaim Code: CO-242",
+options: [
+"Out-of-network issue, inform patient",
+"Submit appeal immediately",
+"Check deductible",
+"Ignore, process as PPO"
+],
+answer: 0,
+rationale: "HMO requires strict network adherence. CO-242 indicates out-of-network services."
+},
+
+{
+title: "Call 4 – HDHP Plan",
+scenario: "Caller: 'Why do I owe so much? I have insurance.' \n\nCode: PR-1",
+options: [
+"Insurance denied claim",
+"Patient deductible applies",
+"Authorization missing",
+"Coverage inactive"
+],
+answer: 1,
+rationale: "PR-1 indicates deductible responsibility. This is not a denial, but patient financial responsibility."
+},
+
+{
+title: "Call 5 – Medicaid Managed Care",
+scenario: "Caller: 'My claim was rejected and I don’t understand why.' \n\nEligibility Response: Error 55",
+options: [
+"Authorization issue",
+"Out-of-network issue",
+"Member not active or not found",
+"Deductible not met"
+],
+answer: 2,
+rationale: "Error 55 indicates subscriber not found or inactive coverage on date of service."
+}
+
+];
+
+function loadCase() {
+    if (currentCase >= cases.length) {
+        document.getElementById("case-container").innerHTML = "<h2>Simulation Complete!</h2>";
+        return;
+    }
+
+    const c = cases[currentCase];
+
+    let html = `<div class="card">
+        <h2>${c.title}</h2>
+        <p>${c.scenario}</p>`;
+
+    c.options.forEach((opt, index) => {
+        html += `<button class="option" onclick="checkAnswer(${index})">${opt}</button>`;
+    });
+
+    html += `<div id="feedback" class="feedback hidden"></div></div>`;
+
+    document.getElementById("case-container").innerHTML = html;
+}
+
+function checkAnswer(selected) {
+    const c = cases[currentCase];
+    const feedback = document.getElementById("feedback");
+
+    feedback.classList.remove("hidden");
+
+    if (selected === c.answer) {
+        score++;
+        feedback.innerHTML = "✅ Correct! " + c.rationale;
+    } else {
+        feedback.innerHTML = "❌ Incorrect. " + c.rationale;
+    }
+
+    document.getElementById("score").innerText = "Score: " + score;
+
+    setTimeout(() => {
+        currentCase++;
+        loadCase();
+    }, 3000);
+}
+
+loadCase();
+
+</script>
+
+</body>
+</html>
